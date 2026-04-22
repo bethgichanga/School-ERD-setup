@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>School ERD — Beth Gichanga</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;800&display=swap');
+
+  :root {
+    --bg: #0b0f1a;
+    --surface: #111827;
+    --border: #1e293b;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --accent3: #34d399;
+    --accent4: #fb923c;
+    --accent5: #f472b6;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --pk: #fbbf24;
+    --fk: #38bdf8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Starfield background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(56,189,248,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 10%, rgba(129,140,248,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 80%, rgba(52,211,153,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 25% 60%, rgba(251,191,36,0.2) 0%, transparent 100%),
+      radial-gradient(600px 600px at 70% 50%, rgba(56,189,248,0.03) 0%, transparent 70%),
+      radial-gradient(400px 400px at 20% 70%, rgba(129,140,248,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 2.5rem 3rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+  }
+
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  header span {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .legend {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.75rem 3rem;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  .canvas-wrap {
+    position: relative;
+    z-index: 10;
+    overflow: auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  svg.erd-lines {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .erd-grid {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(4, 240px);
+    gap: 1.5rem;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .entity {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: box-shadow 0.25s, border-color 0.25s, transform 0.2s;
+    cursor: default;
+    position: relative;
+  }
+
+  .entity:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 12px 40px rgba(56,189,248,0.12);
+  }
+
+  .entity-header {
+    padding: 0.6rem 0.9rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .entity-icon { font-size: 0.9rem; }
+
+  .entity-fields {
+    padding: 0.4rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .field {
+    padding: 0.3rem 0.9rem;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted);
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .field:hover { background: rgba(255,255,255,0.03); color: var(--text); }
+
+  .field-name { flex: 1; }
+
+  .field-type {
+    font-size: 0.6rem;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .badge {
+    font-size: 0.55rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .pk { background: rgba(251,191,36,0.15); color: var(--pk); }
+  .fk { background: rgba(56,189,248,0.12); color: var(--fk); }
+
+  /* Color bands per entity category */
+  .cat-academic .entity-header { background: linear-gradient(90deg, rgba(56,189,248,0.18), transparent); border-left: 3px solid var(--accent); }
+  .cat-people   .entity-header { background: linear-gradient(90deg, rgba(52,211,153,0.18), transparent); border-left: 3px solid var(--accent3); }
+  .cat-junction .entity-header { background: linear-gradient(90deg, rgba(129,140,248,0.18), transparent); border-left: 3px solid var(--accent2); }
+  .cat-admin    .entity-header { background: linear-gradient(90deg, rgba(251,191,36,0.15), transparent); border-left: 3px solid var(--pk); }
+  .cat-ops      .entity-header { background: linear-gradient(90deg, rgba(251,146,60,0.15), transparent); border-left: 3px solid var(--accent4); }
+
+  .rel-panel {
+    position: relative;
+    z-index: 10;
+    padding: 1.5rem 3rem 3rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .rel-panel h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--accent2);
+    margin-bottom: 1rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .rel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 0.6rem;
+  }
+
+  .rel-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.8rem;
+  }
+
+  .rel-from { color: var(--accent); font-weight: 500; }
+  .rel-to   { color: var(--accent3); font-weight: 500; }
+  .rel-type { color: var(--accent2); font-size: 1rem; }
+  .rel-desc { color: var(--muted); font-size: 0.65rem; margin-left: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⬡ School ERD</h1>
+  <span>Beth Gichanga · School-ERD-setup · PostgreSQL</span>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div> Academic</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> People</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#818cf8"></div> Junction</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Admin</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div> Operations</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.7)"></div> PK = Primary Key</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(56,189,248,0.7)"></div> FK = Foreign Key</div>
+</div>
+
+<div class="canvas-wrap">
+  <div class="erd-grid">
+
+    <!-- DEPARTMENTS -->
+    <div class="entity cat-admin" id="e-departments">
+      <div class="entity-header"><span class="entity-icon">🏛️</span> departments</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">department_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="field-name">name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">head_teacher_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">created_at</span><span class="field-type">timestamp</span></div>
+      </div>
+    </div>
+
+    <!-- TEACHERS -->
+    <div class="entity cat-people" id="e-teachers">
+      <div class="entity-header"><span class="entity-icon">👩‍🏫</span> teachers</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">teacher_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="field-name">first_name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">last_name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">email</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">department_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">hire_date</span><span class="field-type">date</span></div>
+        <div class="field"><span class="field-name">employment_type</span><span class="field-type">varchar</span></div>
+      </div>
+    </div>
+
+    <!-- SUPPORT STAFF -->
+    <div class="entity cat-people" id="e-support">
+      <div class="entity-header"><span class="entity-icon">🧑‍💼</span> support_staff</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">staff_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="field-name">first_name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">last_name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">role</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">department_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">hire_date</span><span class="field-type">date</span></div>
+      </div>
+    </div>
+
+    <!-- SUBJECTS -->
+    <div class="entity cat-academic" id="e-subjects">
+      <div class="entity-header"><span class="entity-icon">📚</span> subjects</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">subject_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="field-name">name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">code</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">department_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">credits</span><span class="field-type">int</span></div>
+      </div>
+    </div>
+
+    <!-- CLASSES -->
+    <div class="entity cat-academic" id="e-classes">
+      <div class="entity-header"><span class="entity-icon">🏫</span> classes</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">class_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="field-name">grade</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">section</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">homeroom_teacher_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">capacity</span><span class="field-type">int</span></div>
+      </div>
+    </div>
+
+    <!-- GUARDIANS -->
+    <div class="entity cat-people" id="e-guardians">
+      <div class="entity-header"><span class="entity-icon">👨‍👩‍👧</span> guardians</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">guardian_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="field-name">first_name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">last_name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">relationship</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">phone</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">email</span><span class="field-type">varchar</span></div>
+      </div>
+    </div>
+
+    <!-- STUDENTS -->
+    <div class="entity cat-people" id="e-students">
+      <div class="entity-header"><span class="entity-icon">🎒</span> students</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">student_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="field-name">first_name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">last_name</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">admission_no</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">class_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">guardian_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">status</span><span class="field-type">varchar</span></div>
+      </div>
+    </div>
+
+    <!-- ENROLLMENTS -->
+    <div class="entity cat-junction" id="e-enrollments">
+      <div class="entity-header"><span class="entity-icon">📋</span> enrollments</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">enrollment_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">student_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">class_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">academic_year</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">enrolled_on</span><span class="field-type">date</span></div>
+      </div>
+    </div>
+
+    <!-- ASSIGNMENTS -->
+    <div class="entity cat-junction" id="e-assignments">
+      <div class="entity-header"><span class="entity-icon">📎</span> assignments</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">assignment_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">teacher_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">subject_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">class_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">academic_year</span><span class="field-type">varchar</span></div>
+      </div>
+    </div>
+
+    <!-- GRADES -->
+    <div class="entity cat-ops" id="e-grades">
+      <div class="entity-header"><span class="entity-icon">📊</span> grades</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">grade_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">student_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">subject_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">teacher_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">term</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">score</span><span class="field-type">numeric</span></div>
+        <div class="field"><span class="field-name">grade_letter</span><span class="field-type">varchar</span></div>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE -->
+    <div class="entity cat-ops" id="e-attendance">
+      <div class="entity-header"><span class="entity-icon">✅</span> attendance</div>
+      <div class="entity-fields">
+        <div class="field"><span class="badge pk">PK</span><span class="field-name">attendance_id</span><span class="field-type">serial</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">student_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="badge fk">FK</span><span class="field-name">class_id</span><span class="field-type">int</span></div>
+        <div class="field"><span class="field-name">date</span><span class="field-type">date</span></div>
+        <div class="field"><span class="field-name">status</span><span class="field-type">varchar</span></div>
+        <div class="field"><span class="field-name">notes</span><span class="field-type">text</span></div>
+      </div>
+    </div>
+
+  </div><!-- /erd-grid -->
+</div><!-- /canvas-wrap -->
+
+<!-- RELATIONSHIPS PANEL -->
+<div class="rel-panel">
+  <h2>Relationships</h2>
+  <div class="rel-grid">
+    <div class="rel-row"><span class="rel-from">departments</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">teachers</span><span class="rel-desc">dept has many teachers</span></div>
+    <div class="rel-row"><span class="rel-from">departments</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">subjects</span><span class="rel-desc">dept owns many subjects</span></div>
+    <div class="rel-row"><span class="rel-from">departments</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">support_staff</span><span class="rel-desc">dept has many staff</span></div>
+    <div class="rel-row"><span class="rel-from">teachers</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">classes</span><span class="rel-desc">homeroom teacher per class</span></div>
+    <div class="rel-row"><span class="rel-from">classes</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">students</span><span class="rel-desc">class has many students</span></div>
+    <div class="rel-row"><span class="rel-from">guardians</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">students</span><span class="rel-desc">guardian for multiple students</span></div>
+    <div class="rel-row"><span class="rel-from">students</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">enrollments</span><span class="rel-desc">enrolled per academic year</span></div>
+    <div class="rel-row"><span class="rel-from">classes</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">enrollments</span><span class="rel-desc">many students enrolled</span></div>
+    <div class="rel-row"><span class="rel-from">teachers</span><span class="rel-type">M ──&lt; N</span><span class="rel-to">subjects</span><span class="rel-desc">via assignments table</span></div>
+    <div class="rel-row"><span class="rel-from">teachers</span><span class="rel-type">M ──&lt; N</span><span class="rel-to">classes</span><span class="rel-desc">via assignments table</span></div>
+    <div class="rel-row"><span class="rel-from">students</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">grades</span><span class="rel-desc">graded per subject per term</span></div>
+    <div class="rel-row"><span class="rel-from">students</span><span class="rel-type">1 ──&lt; N</span><span class="rel-to">attendance</span><span class="rel-desc">daily attendance record</span></div>
+    <div class="rel-row"><span class="rel-from">departments</span><span class="rel-type">1 ──── 1</span><span class="rel-to">teachers (head)</span><span class="rel-desc">self-referencing head</span></div>
+  </div>
+</div>
+
+</body>
+</html>
